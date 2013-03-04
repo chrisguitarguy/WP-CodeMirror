@@ -79,7 +79,7 @@ class WP_CodeMirror
         }
 
         add_action('admin_enqueue_scripts', array($this, 'enqueue'));
-        add_action('admin_head', array($this, 'setupCodemirror'));
+        add_action('admin_footer', array($this, 'setupCodemirror'), 99);
         add_filter('wp_default_editor', array($this, 'setDefaultEditor'));
         add_filter('quicktags_settings', array($this, 'removeQuickTags'), 10, 2);
     }
@@ -123,20 +123,39 @@ class WP_CodeMirror
         ?>
         <script type="text/javascript">
         jQuery(document).ready(function($) {
-            var cnt = document.getElementById('content');
+            var cnt = document.getElementById('content'), cm;
 
             if (!cnt) {
                 return;
             }
 
-            CodeMirror.fromTextArea(cnt, {
+            cm = CodeMirror.fromTextArea(cnt, {
                 mode: 'htmlmixed',
                 lineNumbers: true,
                 theme: '<?php echo esc_js(apply_filters('wp_codemirror_theme', 'default')); ?>',
-                indentUnit: <?php echo absint(apply_filters('wp_codemirror_indent_unit', 4)); ?>
+                indentUnit: <?php echo absint(apply_filters('wp_codemirror_indent_unit', 4)); ?>,
+                lineWrapping: true
             });
+
+            // what follows is a bunch of hacks to (hopefully) get this to play
+            // nice with the media uploader. Since TinyMCE and QTags are not
+            // present we need to see the wpActiveEditor global ourselves.
+            $(cnt).parents('.wp-editor-wrap').on('click', function(e) {
+                wpActiveEditor = cnt.id;
+            });
+
+            window.old_send_to_editor = window.send_to_editor;
+
+            window.send_to_editor = function(res) {
+                if (wpActiveEditor && cnt.id == wpActiveEditor) {
+                    cm.replaceRange(res, cm.getCursor());
+                } else {
+                    return window.old_send_to_editor(res);
+                }
+            };
         });
         </script>
+        <style type="text/css">#wp-word-count { display: none; }</style>
         <?php
     }
 
