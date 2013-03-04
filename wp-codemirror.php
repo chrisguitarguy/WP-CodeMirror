@@ -137,7 +137,6 @@ class WP_CodeMirror
             });
         });
         </script>
-        <style type="text/css">#post-status-info { display: none; }</style>
         <?php
     }
 
